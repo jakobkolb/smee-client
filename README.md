@@ -1,4 +1,4 @@
-<h2 align="center">smee-client</h2>
+<h2 align="center">smee-client-proxy</h2>
 <p align="center">Client and CLI for smee.io, a service that delivers webhooks to your local environment - e.g. behind a restrictive company proxy.</p>
 
 <p align="center">Fork of <a href="https://github.com/probot/smee-client">smee-client</a> to add proxy support.</p>
