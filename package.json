@@ -1,6 +1,6 @@
 {
   "name": "smee-client-proxy",
-  "version": "1.2.4",
+  "version": "1.2.6",
   "description": "Client to proxy webhooks to local host behind a proxy",
   "main": "index.js",
   "bin": {
