@@ -44,6 +44,9 @@ class Client {
 
     delete data.query
 
+    // Leaving the host results in problems with TLS varification and ingress on the target server.
+    delete data.host
+
     const req = superagent.post(url.format(target)).send(data.body)
 
     delete data.body
