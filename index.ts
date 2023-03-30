@@ -10,18 +10,21 @@ type Severity = 'info' | 'error'
 interface Options {
   source: string
   target: string
+  host: string
   logger?: Pick<Console, Severity>
 }
 
 class Client {
   source: string;
   target: string;
+  host: string;
   logger: Pick<Console, Severity>;
   events!: EventSource;
 
-  constructor ({ source, target, logger = console }: Options) {
+  constructor ({ source, target, host, logger = console }: Options) {
     this.source = source
     this.target = target
+    this.host = host
     this.logger = logger!
 
     if (!validator.isURL(this.source)) {
@@ -44,8 +47,11 @@ class Client {
 
     delete data.query
 
-    // Leaving the host results in problems with TLS varification and ingress on the target server.
-    delete data.host
+    // if host is given, use it for target ingress to work.
+    if (this.host) {
+      data.host = this.host
+      data['disguised-host'] = this.host
+    }
 
     const req = superagent.post(url.format(target)).send(data.body)
 
@@ -53,6 +59,7 @@ class Client {
 
     Object.keys(data).forEach(key => {
       req.set(key, data[key])
+      console.log(key, data[key])
     })
 
     req.end((err, res) => {
@@ -83,6 +90,7 @@ class Client {
     events.addEventListener('error', this.onerror.bind(this))
 
     this.logger.info(`Forwarding ${this.source} to ${this.target}`)
+    this.logger.info(`Setting host to ${this.host}`)
     this.events = events
 
     return events
