@@ -47,11 +47,8 @@ class Client {
 
     delete data.query
 
-    // if host is given, use it for target ingress to work.
-    if (this.host) {
-      data.host = this.host
-      data['disguised-host'] = this.host
-    }
+    data.host = target.host
+    data['disguised-host'] = target.host
 
     const req = superagent.post(url.format(target)).send(data.body)
 
