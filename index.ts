@@ -2,8 +2,10 @@ import validator from 'validator'
 import EventSource from 'eventsource'
 import superagent from 'superagent'
 import url from 'url'
+import express from 'express'
 import querystring from 'querystring'
 import 'global-agent/bootstrap'
+import http from 'http'
 
 type Severity = 'info' | 'error'
 
@@ -20,6 +22,7 @@ class Client {
   host: string;
   logger: Pick<Console, Severity>;
   events!: EventSource;
+  server!: http.Server;
 
   constructor ({ source, target, host, logger = console }: Options) {
     this.source = source
@@ -34,8 +37,27 @@ class Client {
 
   static async createChannel () {
     return superagent.head('https://smee.io/new').redirects(0).catch((err) => {
+      console.log(err)
       return err.response.headers.location
     })
+  }
+
+  createHealthListener () {
+
+    const app = express()
+
+    app.get('/health', (req, res) => {
+      this.logger.info('health check')
+      this.logger.info(this.events.readyState, this.events.OPEN)
+      if (this.events.readyState == this.events.CLOSED || this.events.readyState == this.events.CONNECTING) {
+        res.status(503).send('Event source is not connected')
+        return res
+      }
+      res.status(200).send('OK')
+      return res
+    })
+
+    return app
   }
 
   onmessage (msg: any) {
@@ -69,18 +91,18 @@ class Client {
   }
 
   onopen () {
-    this.logger.info('Connected', this.events.url)
+    // this.logger.info('Connected', this.events.url)
   }
 
   onerror (err: any) {
-    this.logger.error(err)
+    // this.logger.error(err)
   }
 
   start () {
     const events = new EventSource(this.source);
 
     // Reconnect immediately
-    (events as any).reconnectInterval = 0 // This isn't a valid property of EventSource
+    // (events as any).reconnectInterval = 0 // This isn't a valid property of EventSource
 
     events.addEventListener('message', this.onmessage.bind(this))
     events.addEventListener('open', this.onopen.bind(this))
@@ -90,8 +112,20 @@ class Client {
     this.logger.info(`Setting host to ${this.host}`)
     this.events = events
 
+    const app = this.createHealthListener()
+
+    this.server = app.listen(3000, () => {
+      this.logger.info('Health listener started on port 3000')
+    })
+
     return events
   }
+
+  async stop () {
+    this.events.close()
+    await this.server.close()
+}
+
 }
 
 export = Client
