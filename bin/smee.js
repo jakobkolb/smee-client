@@ -32,4 +32,3 @@ async function setup (program) {
 setup(program)
 
 export { setup, program }
-
