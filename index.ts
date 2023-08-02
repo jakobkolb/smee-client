@@ -13,6 +13,7 @@ interface Options {
   source: string
   target: string
   host: string
+  healthPort?: number
   logger?: Pick<Console, Severity>
 }
 
@@ -20,15 +21,17 @@ class Client {
   source: string;
   target: string;
   host: string;
+  healthPort: number;
   logger: Pick<Console, Severity>;
   events!: EventSource;
   server!: http.Server;
 
-  constructor ({ source, target, host, logger = console }: Options) {
+  constructor ({ source, target, host, logger = console, healthPort }: Options) {
     this.source = source
     this.target = target
     this.host = host
     this.logger = logger!
+    this.healthPort = healthPort? healthPort : 3000
 
     if (!validator.isURL(this.source)) {
       throw new Error('The provided URL is invalid.')
@@ -43,12 +46,10 @@ class Client {
   }
 
   createHealthListener () {
-
     const app = express()
 
     app.get('/health', (req, res) => {
       this.logger.info('health check')
-      this.logger.info(this.events.readyState, this.events.OPEN)
       if (this.events.readyState == this.events.CLOSED || this.events.readyState == this.events.CONNECTING) {
         res.status(503).send('Event source is not connected')
         return res
@@ -91,18 +92,18 @@ class Client {
   }
 
   onopen () {
-    // this.logger.info('Connected', this.events.url)
+    this.logger.info('Connected', this.events.url)
   }
 
   onerror (err: any) {
-    // this.logger.error(err)
+    this.logger.error(err)
   }
 
   start () {
     const events = new EventSource(this.source);
 
     // Reconnect immediately
-    // (events as any).reconnectInterval = 0 // This isn't a valid property of EventSource
+    (events as any).reconnectInterval = 0 // This isn't a valid property of EventSource
 
     events.addEventListener('message', this.onmessage.bind(this))
     events.addEventListener('open', this.onopen.bind(this))
@@ -114,8 +115,8 @@ class Client {
 
     const app = this.createHealthListener()
 
-    this.server = app.listen(3000, () => {
-      this.logger.info('Health listener started on port 3000')
+    this.server = app.listen(this.healthPort, () => {
+      this.logger.info('Health listener started on port ' + this.healthPort)
     })
 
     return events
